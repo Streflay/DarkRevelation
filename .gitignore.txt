@@ -1,0 +1,13 @@
+# Ignore Visual Studio files
+.vs/
+.vscode/
+
+# Ignore Unreal Engine generated files
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
