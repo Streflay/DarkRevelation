@@ -48,6 +48,9 @@ public:
 
 	float LastRecordedTime;
 
+	UPROPERTY()
+	AController* LastDamageInstigator = nullptr;
+
 	// FPSCharacter.h
 	UFUNCTION(BlueprintCallable)
 	void PlayEquipWeaponMontage(UAnimMontage* MontageToPlay);

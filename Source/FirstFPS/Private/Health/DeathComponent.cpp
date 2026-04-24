@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Health/DeathComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -18,27 +18,33 @@ UDeathComponent::UDeathComponent()
 
 void UDeathComponent::CheckDeath(float CurrentHealth)
 {
-    if (CurrentHealth <= 0.f){
-        // 服务器触发 Multicast
-        if (GetOwner()->HasAuthority()) {
-            if (AFPSCharacter* Char = Cast<AFPSCharacter>(GetOwner())){
-                if (AFPSPlayerController* PC = Cast<AFPSPlayerController>(Char->GetController())){
-                    if (AMyGameModeBase* GM = GetWorld()->GetAuthGameMode<AMyGameModeBase>()){
-                        GM->NotifyPlayerDied(PC);
-                    }
-                }
-            }
-            Multicast_OnDeath();
-        }
-        // 服务器启动重生计时器（3 秒可改）
-        // GetWorld()->GetTimerManager().SetTimer(RespawnTimerHandle, this, &UDeathComponent::HandleRespawn, 3.0f, false);
+    if (bIsDead) return;
+    if (CurrentHealth > 0.f) return;
+    bIsDead = true;
+
+    // 服务器触发 Multicast
+    if (!GetOwner()->HasAuthority()) return;
+
+    AFPSCharacter* Char = Cast<AFPSCharacter>(GetOwner());
+    if (!Char) return;
+
+    AFPSPlayerController* VictimPC = Cast<AFPSPlayerController>(Char->GetController());
+    AFPSPlayerController* KillerController = Cast<AFPSPlayerController>(Char->LastDamageInstigator);
+
+    if (AMyGameModeBase* GM = GetWorld()->GetAuthGameMode<AMyGameModeBase>()) {
+        GM->NotifyPlayerDied(VictimPC, KillerController);
     }
+
+    Multicast_OnDeath();
 }
+
 
 // Called when the game starts
 void UDeathComponent::BeginPlay()
 {
 	Super::BeginPlay();	
+
+    bIsDead = false;
 }
 
 void UDeathComponent::Multicast_OnDeath_Implementation()

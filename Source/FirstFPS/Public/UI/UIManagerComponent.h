@@ -15,6 +15,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventoryUpdate, EWeaponSlot, We
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoUIUpdate,int32, MagazineCapacity,int32, RemainingAmmo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDisplayAmmoUI, bool, bDisplay);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFFAWinner, int32, Kills);
+// 击杀数更新（只影响自己UI）
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnKillsUpdated, int32, Kills);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnHitMarker);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -32,6 +36,9 @@ public:
 	/** 根据 Tag 获取 Widget 实例（若不存在则创建） */
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	UUserWidget* GetOrCreateWidgetInstance(const FGameplayTag& WidgetTag);
+
+	UPROPERTY()
+	FGameplayTag CurrentActiveWidget;
 
 public:
 	/** 更新背包/武器槽 UI，由 C++ 调用，蓝图实现具体显示逻辑 */
@@ -64,6 +71,16 @@ public:
 	/** 蓝图事件，可在 UMG 中绑定 HitMarker 动画 */
 	UPROPERTY(BlueprintAssignable, Category = "UI")
 	FOnHitMarker OnHitMarker;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnFFAWinner OnFFAWinner;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnKillsUpdated OnKillsUpdated;
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "UI")
+	void UpdateKillsUI(int32 Kills);
+	void UpdateKillsUI_Implementation(int32 Kills);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")

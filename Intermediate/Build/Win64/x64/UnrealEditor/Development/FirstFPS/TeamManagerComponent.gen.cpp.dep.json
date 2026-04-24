@@ -1,0 +1,18 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "d:\\ue_project\\firstfps\\intermediate\\build\\win64\\unrealeditor\\inc\\firstfps\\uht\\teammanagercomponent.gen.cpp",
+        "ProvidedModule": "",
+        "PCH": "d:\\ue_project\\firstfps\\intermediate\\build\\win64\\x64\\firstfpseditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.cpp20.inclorderunreal5_3.h.pch",
+        "Includes": [
+            "d:\\ue_project\\firstfps\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\firstfps\\definitions.firstfps.h",
+            "d:\\ue_project\\firstfps\\source\\firstfps\\public\\ui\\teammanagercomponent.h",
+            "d:\\ue_5.5\\engine\\source\\runtime\\gameplaytags\\classes\\gameplaytagcontainer.h",
+            "d:\\ue_5.5\\engine\\source\\runtime\\core\\public\\misc\\comparisonutility.h",
+            "d:\\ue_5.5\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\gameplaytags\\uht\\gameplaytagcontainer.generated.h",
+            "d:\\ue_project\\firstfps\\intermediate\\build\\win64\\unrealeditor\\inc\\firstfps\\uht\\teammanagercomponent.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

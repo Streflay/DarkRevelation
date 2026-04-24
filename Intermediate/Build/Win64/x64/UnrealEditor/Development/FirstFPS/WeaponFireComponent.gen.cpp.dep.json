@@ -1,0 +1,15 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "d:\\ue_project\\firstfps\\intermediate\\build\\win64\\unrealeditor\\inc\\firstfps\\uht\\weaponfirecomponent.gen.cpp",
+        "ProvidedModule": "",
+        "PCH": "d:\\ue_project\\firstfps\\intermediate\\build\\win64\\x64\\firstfpseditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.cpp20.inclorderunreal5_3.h.pch",
+        "Includes": [
+            "d:\\ue_project\\firstfps\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\firstfps\\definitions.firstfps.h",
+            "d:\\ue_project\\firstfps\\source\\firstfps\\public\\actionsystem\\weaponfirecomponent.h",
+            "d:\\ue_project\\firstfps\\intermediate\\build\\win64\\unrealeditor\\inc\\firstfps\\uht\\weaponfirecomponent.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

@@ -22,6 +22,7 @@
 #include "UI/TeamManagerComponent.h"
 #include "Core/FPSPlayerState.h"
 #include "Animation/FPSAnimInstance.h"
+#include "MyGameModeBase.h"
 
 AFPSCharacter::AFPSCharacter()
 {
@@ -83,21 +84,14 @@ float AFPSCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEv
 	AFPSPlayerController* TargetPC = Cast<AFPSPlayerController>(GetController());
 	AFPSPlayerController* InstigatorPC = Cast<AFPSPlayerController>(EventInstigator);
 
-	// 队伍检查 同队，忽略伤害
-	AFPSPlayerState* TargetPS = TargetPC ? TargetPC->GetPlayerState<AFPSPlayerState>() : nullptr;
-	AFPSPlayerState* InstigatorPS = InstigatorPC ? InstigatorPC->GetPlayerState<AFPSPlayerState>() : nullptr;
-
-	if (TargetPS && InstigatorPS)
-	{
-		if (TargetPS->TeamTag.IsValid() && InstigatorPS->TeamTag.IsValid())
-		{
-			if (TargetPS->TeamTag == InstigatorPS->TeamTag)
-			{
-				// 同队，不能伤害
-				return 0.f;
-			}
+	if (AMyGameModeBase* GM = GetWorld()->GetAuthGameMode<AMyGameModeBase>()) {
+		if (!GM->CanDealDamage(TargetPC, InstigatorPC)) {
+			return 0.f;
 		}
 	}
+
+	// 在这里记录击杀者
+	LastDamageInstigator = EventInstigator ? EventInstigator : nullptr;
 
 	// 获取 HealthComponent
 	UHealthComponent* HealthComp = TargetPC ? TargetPC->HealthComponent : nullptr;

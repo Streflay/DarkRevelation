@@ -12,6 +12,9 @@
 #include "Health/DeathComponent.h"
 #include "Weapon/WeaponInventoryComponent.h"
 #include "Core/FPSPlayerState.h"
+#include "Core/FPSGameInstance.h"
+#include "Core/FPSGameState.h"
+#include "Core/FFAGameModeBase.h"
 
 AMyGameModeBase::AMyGameModeBase()
 {
@@ -20,18 +23,30 @@ AMyGameModeBase::AMyGameModeBase()
 	bStartPlayersAsSpectators = true;
 	DefaultPawnClass = nullptr;
 
-	CounterTerroristScore = 0;
-	TerroristScore = 0;
+	GameStateClass = AFPSGameState::StaticClass();
 }
 
-void AMyGameModeBase::NotifyPlayerDied(APlayerController* PC)
+void AMyGameModeBase::NotifyPlayerDied_Implementation(APlayerController* Victim, APlayerController* Killer)
 {
-	if (!PC) return;
+	if (!Victim) return;
 
-	AlivePlayers.Remove(PC);
-	DeadPlayers.AddUnique(PC);
+	AlivePlayers.Remove(Victim);
+	DeadPlayers.AddUnique(Victim);
 
-	AddTeamScore();
+	// 死亡统计
+	if (AFPSPlayerState* VictimPS = Victim->GetPlayerState<AFPSPlayerState>()) {
+		VictimPS->Deaths++; 
+	}
+
+	if (Killer && Killer != Victim) {
+		AddScore(Killer);
+	}
+
+	if (AFFAGameModeBase* FFA = Cast<AFFAGameModeBase>(this)) {
+		HandleFFARespawn(Victim);
+	}
+
+	CheckWinCondition();
 }
 
 void AMyGameModeBase::NotifyPlayerRespawned(APlayerController* PC)
@@ -42,50 +57,17 @@ void AMyGameModeBase::NotifyPlayerRespawned(APlayerController* PC)
 	AlivePlayers.AddUnique(PC);
 }
 
-void AMyGameModeBase::AddTeamScore()
+void AMyGameModeBase::AddScore(APlayerController* Killer)
 {
-	int32  CounterTerroristsAlive = 0;
-	int32 TerroristsAlive = 0;
+}
 
-	for (APlayerController* PCBase : AlivePlayers) {
-		if (!PCBase) continue;
+void AMyGameModeBase::CheckWinCondition()
+{
+}
 
-		AFPSPlayerController* PC = Cast<AFPSPlayerController>(PCBase);
-		if (!PC) continue;
-
-		// 队伍唯一来源：PlayerState
-		AFPSPlayerState* PS = PC->GetPlayerState<AFPSPlayerState>();
-		if (!PS || !PS->TeamTag.IsValid())
-			continue;
-
-		if (PS->TeamTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Team.CounterTerror"))){
-			CounterTerroristsAlive++;
-		} else if (PS->TeamTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Team.Terrorist"))) {
-			TerroristsAlive++;
-		}
-	}
-	// 判定胜利
-	FGameplayTag WinningTeam;
-	int32 TeamScore = 0;
-
-	if (CounterTerroristsAlive == 0 && TerroristsAlive > 0) {
-		// 反恐全灭 → 恐怖分子获胜
-		WinningTeam = FGameplayTag::RequestGameplayTag("Team.Terrorist");
-		TerroristScore++;
-		TeamScore = TerroristScore;
-	} else if (TerroristsAlive == 0 && CounterTerroristsAlive > 0) {
-		// 恐怖分子全灭 → 反恐获胜
-		WinningTeam = FGameplayTag::RequestGameplayTag("Team.CounterTerror");
-		CounterTerroristScore++;
-		TeamScore = CounterTerroristScore;
-	} else {
-		// 回合未结束
-		return;
-	}
-
-	// 向所有玩家广播胜利消息
-	BroadcastTeamWin(WinningTeam, TeamScore);
-	ResetRoundAndRespawnPlayers(3.f);
+bool AMyGameModeBase::CanDealDamage(APlayerController* Target, APlayerController* Attacker)
+{
+	return true;
 }
 
 void AMyGameModeBase::ResetRoundAndRespawnPlayers(float RespawnDelay)
@@ -118,6 +100,7 @@ void AMyGameModeBase::ResetRoundAndRespawnPlayers(float RespawnDelay)
 				// 强制销毁旧 Pawn
 				if (APawn* OldPawn = PC->GetPawn())
 				{
+					PC->UnPossess();
 					OldPawn->Destroy();
 				}
 
@@ -129,6 +112,29 @@ void AMyGameModeBase::ResetRoundAndRespawnPlayers(float RespawnDelay)
 			}
 			}, RespawnDelay, false);
 	}
+}
+
+void AMyGameModeBase::HandleFFARespawn(APlayerController* Victim)
+{
+	if (!Victim) return;
+
+	FTimerHandle Timer;
+	GetWorld()->GetTimerManager().SetTimer(Timer, [this, Victim]()
+		{
+			AFPSPlayerController* PC = Cast<AFPSPlayerController>(Victim);
+			if (!PC) return;
+			// 销毁旧 Pawn
+			if (APawn* OldPawn = PC->GetPawn()) {
+				PC->UnPossess();
+				OldPawn->Destroy();
+			}
+			// 重新生成
+			if (SpawnManager) {
+				SpawnManager->RequestSpawnPlayer(PC);
+			}
+			NotifyPlayerRespawned(PC);
+
+		}, 10.f, false); // 2秒复活
 }
 
 void AMyGameModeBase::BroadcastTeamWin(FGameplayTag WinningTeam, int32 Score)
@@ -143,9 +149,23 @@ void AMyGameModeBase::BroadcastTeamWin(FGameplayTag WinningTeam, int32 Score)
 	}
 }
 
+void AMyGameModeBase::BroadcastFFAWinner(APlayerController* Winner, int32 Kills)
+{
+	for (APlayerController* PCBase : ConnectedPlayers)
+	{
+		if (!PCBase) continue;
+
+		AFPSPlayerController* PC = Cast<AFPSPlayerController>(PCBase);
+		if (!PC) continue;
+
+		PC->Client_UpdateFFAWinner(Kills);
+	}
+}
+
 void AMyGameModeBase::BeginPlay()
 {
 	Super::BeginPlay();
+
 	if (SpawnManager) {
 		SpawnManager->InitializeSpawnPoints();
 	}

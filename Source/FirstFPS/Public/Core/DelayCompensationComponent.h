@@ -42,5 +42,5 @@ public:
     UFUNCTION()
     void OnRep_TimeHistory();
 
-    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;;
+    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

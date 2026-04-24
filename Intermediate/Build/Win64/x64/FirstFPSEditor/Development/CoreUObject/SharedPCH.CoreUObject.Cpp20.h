@@ -1,0 +1,3 @@
+// PCH for Runtime/CoreUObject/Public/CoreUObjectSharedPCH.h
+#include "D:/UE_project/FirstFPS/Intermediate/Build/Win64/x64/FirstFPSEditor/Development/CoreUObject/SharedDefinitions.CoreUObject.Cpp20.h"
+#include "Runtime/CoreUObject/Public/CoreUObjectSharedPCH.h"

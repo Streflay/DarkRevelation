@@ -1,0 +1,8 @@
+{
+	"SourceFiles": [
+		"D:\\UE_project\\FirstFPS\\Source\\FirstFPS\\FirstFPS.Build.cs",
+		"D:\\UE_project\\FirstFPS\\Source\\FirstFPS.Target.cs",
+		"D:\\UE_project\\FirstFPS\\Source\\FirstFPSEditor.Target.cs"
+	],
+	"EngineVersion": "5.5.4"
+}

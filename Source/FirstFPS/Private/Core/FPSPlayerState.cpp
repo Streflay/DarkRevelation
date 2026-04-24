@@ -18,8 +18,15 @@ void AFPSPlayerState::OnRep_TeamTag()
 
 void AFPSPlayerState::SetTeam(const FGameplayTag& NewTeam)
 {
+	if (TeamTag == NewTeam) return;
 	TeamTag = NewTeam;
 	OnRep_TeamTag();
+}
+
+
+float AFPSPlayerState::GetKD() const
+{
+	return Deaths == 0 ? Kills : (float)Kills / Deaths;
 }
 
 void AFPSPlayerState::RecordPosition(FVector NewPosition, float Time)
@@ -42,4 +49,6 @@ void AFPSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AFPSPlayerState, TeamTag);
+	DOREPLIFETIME(AFPSPlayerState, Kills);
+	DOREPLIFETIME(AFPSPlayerState, Deaths);
 }
