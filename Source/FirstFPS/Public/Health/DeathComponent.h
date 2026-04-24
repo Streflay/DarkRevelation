@@ -35,6 +35,9 @@ protected:
 	void Multicast_OnDeath();
 	FTimerHandle RespawnTimerHandle;
 
+	UPROPERTY()
+	bool bIsDead = false;
+
 public:	
 	UFUNCTION(Server, Reliable)
 	void Server_RespawnOwner();

@@ -4,6 +4,13 @@
 
 # Ignore Unreal Engine generated files
 Binaries/
+
+# 但放行 Win64 目录
+!Binaries/Win64/
+
+# 只放行这个 dll
+!Binaries/Win64/UnrealEditor-FirstFPS.dll
+
 Intermediate/
 Saved/
 DerivedDataCache/

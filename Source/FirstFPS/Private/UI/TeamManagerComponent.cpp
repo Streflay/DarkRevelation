@@ -1,6 +1,4 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-DEFINE_LOG_CATEGORY_STATIC(LogTeamManager, Log, All);
-
 
 #include "UI/TeamManagerComponent.h"
 #include "Player/FPSPlayerController.h"
@@ -8,6 +6,8 @@ DEFINE_LOG_CATEGORY_STATIC(LogTeamManager, Log, All);
 #include "MyGameModeBase.h"
 #include "Core/SpawnManagerComponent.h"
 #include "Core/FPSPlayerState.h"
+#include "Core/TeamGameModeModeBase.h"
+#include "Core/FFAGameModeBase.h"
 
 // Sets default values for this component's properties
 UTeamManagerComponent::UTeamManagerComponent()
@@ -24,6 +24,7 @@ void UTeamManagerComponent::SelectTeam(const FGameplayTag& TeamTag)
 			SRV_SelectTeam(TeamTag);
 		}
 	}
+
 }
 
 void UTeamManagerComponent::SelectCharacter(const FGameplayTag& CharacterTag)
@@ -43,7 +44,13 @@ void UTeamManagerComponent::CL_OnSpawnComplete()
 	{
 		// 更新 UI
 		PC->ShowHideWidget(FGameplayTag::RequestGameplayTag("UI.TeamSelection"), false);
-		PC->ShowHideWidget(FGameplayTag::RequestGameplayTag("UI.Main"), true);
+
+		if (GetWorld()->GetAuthGameMode<ATeamGameModeModeBase>()) {
+			PC->ShowHideWidget(FGameplayTag::RequestGameplayTag("UI.Team"), true);
+		} else if (GetWorld()->GetAuthGameMode<AFFAGameModeBase>()) {
+			PC->ShowHideWidget(FGameplayTag::RequestGameplayTag("UI.Single"), true);
+		}
+		
 		PC->ShowHideWidget(FGameplayTag::RequestGameplayTag("UI.Crosshair"), true);
 
 		// 切换输入模式

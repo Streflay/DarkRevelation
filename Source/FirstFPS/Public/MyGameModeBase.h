@@ -21,16 +21,29 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Managers")
 	USpawnManagerComponent* SpawnManager;
 
-	void NotifyPlayerDied(APlayerController* PC);
+	UFUNCTION(Server, Reliable)
+	void NotifyPlayerDied(APlayerController* Victim, APlayerController* Killer);
+
 	void NotifyPlayerRespawned(APlayerController* PC);
 
 	// 判定胜利并增加积分
 	UFUNCTION(BlueprintCallable, Category = "Game")
-	void AddTeamScore();
+	// void AddTeamScore();
+	virtual void AddScore(APlayerController* Killer);
+
+	// 胜利判定（不同模式重写）
+	virtual void CheckWinCondition();
+
+	virtual bool CanDealDamage(
+		APlayerController* Target,
+		APlayerController* Attacker);
 
 	// 回合重置与批量重生
 	UFUNCTION(BlueprintCallable)
 	void ResetRoundAndRespawnPlayers(float RespawnDelay = 3.f);
+
+	UFUNCTION(BlueprintCallable)
+	void HandleFFARespawn(APlayerController* Victim);
 
 protected:
 	// 当前在线的玩家列表（只在服务器端有效）
@@ -42,13 +55,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Players")
 	TArray<APlayerController*> DeadPlayers;
-
-	// 阵营积分
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Score")
-	int32 CounterTerroristScore;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Score")
-	int32 TerroristScore;
 
 	FTimerHandle RespawnTimerHandle;
 
@@ -63,4 +69,7 @@ protected:
 
 	// 推送胜利通知给玩家
 	void BroadcastTeamWin(FGameplayTag WinningTeam, int32 Score);
+
+	UFUNCTION()
+	void BroadcastFFAWinner(APlayerController* Winner, int32 Kills);
 };

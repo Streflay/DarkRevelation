@@ -48,9 +48,6 @@ void UFPSAimOffsetComponent::CalculateAimOffset()
 	{
 		AimOffset = DeltaRot;
 		ServerUpdateAimOffset(AimOffset);
-
-		UE_LOG(LogTemp, Log, TEXT("AimOffset Updated: Pitch=%f, Yaw=%f, Roll=%f"),
-			AimOffset.Pitch, AimOffset.Yaw, AimOffset.Roll);
 	}
 }
 

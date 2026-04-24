@@ -49,6 +49,11 @@ void UUIManagerComponent::ShowHitMarker_Implementation()
 	OnHitMarker.Broadcast();
 }
 
+void UUIManagerComponent::UpdateKillsUI_Implementation(int32 Kills)
+{
+	OnKillsUpdated.Broadcast(Kills);
+}
+
 void UUIManagerComponent::ShowHideWidget(const FGameplayTag& WidgetTag, bool bShow)
 {
 	if (UUserWidget* Widget = GetOrCreateWidgetInstance(WidgetTag))

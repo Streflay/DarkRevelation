@@ -23,10 +23,21 @@ public:
     UFUNCTION()
     void OnRep_TeamTag();
 
+    void SetTeam(const FGameplayTag& NewTeam);
+
     UFUNCTION(BlueprintCallable, Category = "Team")
     FGameplayTag GetTeamTag() const { return TeamTag; }
 
-    void SetTeam(const FGameplayTag& NewTeam);
+    /* ---------------- 计分板数据 ---------------- */
+
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    int32 Kills = 0;
+
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    int32 Deaths = 0; 
+
+    UFUNCTION(BlueprintPure)
+    float GetKD() const;
 
     UFUNCTION(BlueprintCallable, Category = "Network")
     float GetPingSeconds() const

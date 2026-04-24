@@ -12,6 +12,9 @@
 class UUIManagerComponent;
 class UTeamManagerComponent;
 class UHealthComponent;
+class UModeSelectComponent;
+
+
 /**
  * 
  */
@@ -54,4 +57,16 @@ public:
 
 	UFUNCTION(Client, Reliable)
 	void Client_UpdateTeamWinAnnouncement(FGameplayTag WinningTeam, int32 Score, float DisplayTime);
+
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateFFAWinner(int32 Kills);
+
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateKills(int32 Kills);
+
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void Server_StartFFA();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void Server_StartTeam();
 };
