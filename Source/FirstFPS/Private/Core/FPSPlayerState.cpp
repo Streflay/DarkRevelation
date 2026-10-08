@@ -29,22 +29,6 @@ float AFPSPlayerState::GetKD() const
 	return Deaths == 0 ? Kills : (float)Kills / Deaths;
 }
 
-void AFPSPlayerState::RecordPosition(FVector NewPosition, float Time)
-{
-	if (DelayCompensationComponent) {
-		DelayCompensationComponent->RecordPosition(NewPosition, Time);
-	}
-}
-
-FVector AFPSPlayerState::GetPositionAtTime(float TargetTime)
-{
-	if (DelayCompensationComponent) {
-		return DelayCompensationComponent->GetPositionAtTime(TargetTime);
-	}
-	return FVector::ZeroVector;
-}
-
-
 void AFPSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

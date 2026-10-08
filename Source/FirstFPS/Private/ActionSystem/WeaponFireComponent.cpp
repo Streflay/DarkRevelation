@@ -18,6 +18,7 @@
 #include "Core/FPSPlayerState.h"
 #include "Core/DelayCompensationComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "ActionSystem/WeaponRecoilComponent.h"
 
 // Sets default values for this component's properties
 UWeaponFireComponent::UWeaponFireComponent()
@@ -25,6 +26,7 @@ UWeaponFireComponent::UWeaponFireComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 	SetIsReplicatedByDefault(true);
 	BulletSpreadComp = CreateDefaultSubobject<UBulletSpreadComponent>(TEXT("BulletSpreadComp"));
+	RecoilComp = nullptr;
 }
 
 // Called when the game starts
@@ -32,6 +34,7 @@ void UWeaponFireComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	WeaponOwner = Cast<AWeaponBase>(GetOwner());
+	RecoilComp = GetOwner()->FindComponentByClass<UWeaponRecoilComponent>();
 
 	// 确保 FireRate 已初始化
 	float OwnerFireRate = WeaponOwner->FireRate;
@@ -111,6 +114,10 @@ void UWeaponFireComponent::StopFire()
 {
 	bIsFiring = false;
 	StopAutoFireTimer();
+	if (RecoilComp)
+	{
+		RecoilComp->ResetRecoil();
+	}
 
 	if (GetOwnerRole() < ROLE_Authority)
 		ServerStopFire();
@@ -327,6 +334,62 @@ void UWeaponFireComponent::HandleFire()
 		CL_UpdateAmmoUI(Magazine, RemainingAmmo_copy);
 	}
 	DoLineTrace();
+	if (RecoilComp)	RecoilComp->ApplyRecoil();
+}
+
+static bool RaycastRewindCapsule(const FVector& Start, const FVector& End, const FRewindHitBox& HitBox, FVector& OutHitPoint, float& OutHitDistance)
+{
+	// Head：使用 Sphere
+	if (HitBox.HitBoxName == TEXT("Head"))
+	{
+		const FVector Center = HitBox.Transform.GetLocation();
+		const float Radius = HitBox.Radius;
+		const FVector RayDirection = (End - Start).GetSafeNormal();
+		const float RayLength = FVector::Dist(Start, End);
+		if (RayLength <= KINDA_SMALL_NUMBER){
+			return false;
+		}
+
+		// 求球心在射线方向上的投影距离
+		const FVector ToCenter = Center - Start;
+		float Projection = FVector::DotProduct(ToCenter, RayDirection);
+
+		// 必须落在实际射线线段范围内
+		Projection = FMath::Clamp(Projection, 0.0f, RayLength);
+		// 射线上的最近点
+		const FVector ClosestPoint = Start + RayDirection * Projection;
+		const float DistanceSquared = FVector::DistSquared(ClosestPoint,Center);
+
+		// 射线与球体不相交
+		if (DistanceSquared > FMath::Square(Radius)){
+			return false;
+		}
+		OutHitPoint = ClosestPoint;
+		OutHitDistance =Projection;
+		return true;
+	}
+
+	// Body：继续使用原来的 Capsule=
+	const float Radius = HitBox.Radius;
+	const float HalfHeight = FMath::Max(HitBox.HalfHeight, Radius);
+	const float SegmentHalfLength = FMath::Max(HalfHeight - Radius, 0.0f);
+	const FTransform& Transform = HitBox.Transform;
+	const FVector Center = Transform.GetLocation();
+	const FVector Axis = Transform.GetUnitAxis(EAxis::Z);
+	const FVector CapsuleStart = Center - Axis * SegmentHalfLength;
+	const FVector CapsuleEnd = Center + Axis * SegmentHalfLength;
+	FVector ClosestRayPoint;
+	FVector ClosestCapsulePoint;
+	FMath::SegmentDistToSegment(Start, End, CapsuleStart, CapsuleEnd, ClosestRayPoint, ClosestCapsulePoint);
+	const float DistanceSquared = FVector::DistSquared(ClosestRayPoint,ClosestCapsulePoint);
+
+	if (DistanceSquared > FMath::Square(Radius)){
+		return false;
+	}
+
+	OutHitPoint = ClosestRayPoint;
+	OutHitDistance = FVector::Dist(Start, ClosestRayPoint);
+	return true;
 }
 
 void UWeaponFireComponent::DoLineTrace()
@@ -334,6 +397,8 @@ void UWeaponFireComponent::DoLineTrace()
 	if (!WeaponOwner) return;
 	ACharacter* OwnerChar = Cast<ACharacter>(WeaponOwner->GetOwner());
 	if (!OwnerChar) return;
+	UWorld* World = GetWorld();
+	if (!World) return;
 
 	FVector Start;
 	FRotator ViewRot;
@@ -344,52 +409,109 @@ void UWeaponFireComponent::DoLineTrace()
 		BulletSpreadComp->AddSpread();
 		Dir = BulletSpreadComp->ApplySpreadToDirection(Dir);
 	}
-	FVector End = Start + Dir * TraceDistance;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(OwnerChar);
+	const FVector End = Start + Dir * TraceDistance;
+	// 3. 获取攻击者 PlayerState
+	AFPSPlayerState* OwnerPS = OwnerChar->GetPlayerState<AFPSPlayerState>();
+	if (!OwnerPS) return;
+	// 4. 计算服务器回溯时间
+	const float CurrentTime = World->GetTimeSeconds();
+	const float PingSeconds = OwnerPS->GetPingSeconds();
+	// RTT / 2，估算玩家看到画面时服务器对应的时间
+	float RewindSeconds = PingSeconds * 0.5f;
+	// 限制最大回溯时间
+	RewindSeconds = FMath::Min(RewindSeconds, 0.20f);
+	const float TargetTime = CurrentTime - RewindSeconds;
 
-	TArray<FHitResult> HitResults;
-	GetWorld()->LineTraceMultiByChannel(HitResults, Start, End, ECC_Visibility, Params);
-	 
-	// 延迟补偿
-	for (const FHitResult& Hit : HitResults)
-	{
-		ACharacter* TargetChar = Cast<ACharacter>(Hit.GetActor());
-		if (!TargetChar || TargetChar == OwnerChar) continue;
+	// 5. 找出当前服务器世界中的环境阻挡
+	// 注意：这里只检测 World Geometry，玩家 Pawn 不参与这个 Trace。
+	// 这样即使目标现在已经跑到墙后， 我们仍然可以检查历史 HitBox。
+	FCollisionQueryParams WorldParams;
+	WorldParams.AddIgnoredActor(OwnerChar);
 
-		// 获取延迟补偿组件
-		AFPSPlayerState* PS = Cast<AFPSPlayerState>(TargetChar->GetPlayerState());
-		if (!PS || !PS->DelayCompensationComponent) continue;
+	// 忽略所有玩家 Pawn
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It) {
+		APlayerController* PC = It->Get();
+		if (!PC) continue;
+		APawn* Pawn = PC->GetPawn();
+		if (Pawn) WorldParams.AddIgnoredActor(Pawn);
+	}
 
-		AFPSPlayerState* OwnerPS = OwnerChar->GetPlayerState<AFPSPlayerState>();
-		if (!OwnerPS) return;
+	FHitResult WorldHit;
+	const bool bBlockedByWorld = World->LineTraceSingleByChannel(WorldHit, Start, End, ECC_Visibility, WorldParams);
+	const float WorldBlockDistance = bBlockedByWorld ? FVector::Dist(Start, WorldHit.ImpactPoint) : TraceDistance;
 
-		// 获取回溯位置
-		float PingSeconds = OwnerPS->GetPingSeconds();
-		float TargetTime = GetWorld()->GetTimeSeconds() - PingSeconds * 0.5f;
-		FVector CompensatedPos = PS->GetPositionAtTime(TargetTime);
+	// 6. 遍历所有其他玩家:不再依赖当前 LineTrace HitResults。
+	ACharacter* BestTarget = nullptr;
+	FRewindHitBox BestHitBox;
+	FVector BestHitPoint = FVector::ZeroVector;
+	float BestDistance = TraceDistance;
 
-		UCapsuleComponent* TargetCapsule = TargetChar->GetCapsuleComponent();
-		if (!TargetCapsule) continue;
+	// 遍历世界中的 PlayerState
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It) {
+		APlayerController* TargetPC = It->Get();
+		if (!TargetPC) continue;
+		ACharacter* TargetChar = Cast<ACharacter>(TargetPC->GetPawn());
+		if (!TargetChar) continue;
+		if (TargetChar == OwnerChar) continue;
+		AFPSPlayerState* TargetPS = TargetChar->GetPlayerState<AFPSPlayerState>();
+		if (!TargetPS) continue;
+		UDelayCompensationComponent* DelayComp = TargetPS->DelayCompensationComponent;
+		if (!DelayComp) continue;
+		// 获取目标在过去 TargetTime 的历史状态
+		FRewindFrame RewindFrame;
+		if (!DelayComp->GetFrameAtTime(TargetTime, RewindFrame)) continue;
 
-		// 用回溯位置创建虚拟 Capsule 做 Trace
-		FCollisionShape CapsuleShape = FCollisionShape::MakeCapsule(TargetCapsule->GetScaledCapsuleRadius(), TargetCapsule->GetScaledCapsuleHalfHeight());
-		FVector Offset = CompensatedPos - TargetChar->GetActorLocation();
+		// 遍历历史 HitBox
+		for (const FRewindHitBox& HitBox : RewindFrame.HitBoxes) {
+			FVector HitPoint = FVector::ZeroVector;
+			float HitDistance = 0.0f;
 
-		FHitResult CompHit;
-		bool bHit = GetWorld()->SweepSingleByChannel(CompHit, Start + Offset, End + Offset, FQuat::Identity, ECC_Visibility, CapsuleShape, Params);
+			const bool bHit = RaycastRewindCapsule(Start, End, HitBox, HitPoint, HitDistance);
+			
+			if (!bHit) continue;
+			// 这个 HitBox 必须比墙更近	 否则说明：
+			// 玩家历史位置虽然被射线命中， 但世界里的墙挡在它前面。
+			if (HitDistance > WorldBlockDistance) continue;
 
-		if (bHit && CompHit.GetActor() == TargetChar) {
-			float AppliedDamage = WeaponOwner->BodyDamage;
-			USkeletalMeshComponent* MeshComp = Cast<USkeletalMeshComponent>(CompHit.GetComponent());
-			if (MeshComp && (CompHit.BoneName == "head" || CompHit.BoneName == "Head"))
-				AppliedDamage = WeaponOwner->HeadDamage;
-
-			UGameplayStatics::ApplyPointDamage(CompHit.GetActor(), AppliedDamage, Dir, CompHit, OwnerChar->GetController(), WeaponOwner, nullptr);
-			CL_ShowHitMarker();
-			MulticastSpawnHitFX(CompHit.ImpactPoint, CompHit.ImpactNormal.Rotation(), true);
+			// 找最近的目标
+			if (HitDistance < BestDistance) {
+				BestDistance = HitDistance;
+				BestTarget = TargetChar;
+				BestHitBox = HitBox;
+				BestHitPoint = HitPoint;
+			}
 		}
 	}
+
+	// 没有命中任何历史 HitBox
+	if (!BestTarget) return;
+
+	// 根据历史 HitBox 判断头部 / 身体
+	float AppliedDamage = WeaponOwner->BodyDamage;
+	if (BestHitBox.HitBoxName == TEXT("Head"))
+		AppliedDamage = WeaponOwner->HeadDamage;
+
+	// 构造 Damage HitResult
+	FHitResult HitResult;
+	HitResult.bBlockingHit = true;
+	HitResult.HitObjectHandle = FActorInstanceHandle(BestTarget);
+	if (USkeletalMeshComponent* TargetMesh = BestTarget->GetMesh()) {
+		HitResult.Component = TargetMesh;
+	}
+	HitResult.ImpactPoint = BestHitPoint;
+	HitResult.Location = BestHitPoint;
+	HitResult.BoneName = BestHitBox.HitBoxName;
+	
+	// 计算一个简单的 ImpactNormal
+	FVector CapsuleCenter = BestHitBox.Transform.GetLocation();
+	FVector ImpactNormal = (BestHitPoint - CapsuleCenter).GetSafeNormal();
+	HitResult.ImpactNormal = ImpactNormal;
+
+	// 服务端最终造成伤害
+	UGameplayStatics::ApplyPointDamage(BestTarget, AppliedDamage, Dir, HitResult, OwnerChar->GetController(), WeaponOwner, nullptr);
+	// 命中特效
+	CL_ShowHitMarker();
+	MulticastSpawnHitFX(BestHitPoint, ImpactNormal.Rotation(), true);
 }
 
 void UWeaponFireComponent::SpawnMuzzleFX()

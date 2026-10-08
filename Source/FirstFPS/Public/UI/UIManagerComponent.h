@@ -40,6 +40,9 @@ public:
 	UPROPERTY()
 	FGameplayTag CurrentActiveWidget;
 
+	UFUNCTION()
+	void ClearAllWidgets();
+
 public:
 	/** 更新背包/武器槽 UI，由 C++ 调用，蓝图实现具体显示逻辑 */
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "UI")

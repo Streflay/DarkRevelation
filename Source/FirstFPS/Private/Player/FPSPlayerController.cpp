@@ -99,3 +99,11 @@ void AFPSPlayerController::CL_ShowHideWidget_Implementation(const FGameplayTag& 
 {
 	UIManager->ShowHideWidget(WidgetTag, bShow);
 }
+
+void AFPSPlayerController::Client_ClearAllWidgets_Implementation()
+{
+	if (UIManager)
+	{
+		UIManager->ClearAllWidgets();
+	}
+}

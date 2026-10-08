@@ -8,6 +8,7 @@
 
 class AWeaponBase;
 class UBulletSpreadComponent;
+class UWeaponRecoilComponent;
 
 // Éä»÷Ä£Ê½
 UENUM(BlueprintType)
@@ -58,6 +59,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UBulletSpreadComponent* BulletSpreadComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UWeaponRecoilComponent* RecoilComp;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

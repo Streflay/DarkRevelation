@@ -4,6 +4,7 @@
 #include "Core/FFAGameModeBase.h"
 #include "Core/FPSPlayerState.h"
 #include "Core/FPSGameState.h"
+#include "Kismet/GameplayStatics.h"
 #include "Player/FPSPlayerController.h"
 
 void AFFAGameModeBase::BeginPlay()
@@ -26,8 +27,21 @@ void AFFAGameModeBase::CheckWinCondition()
 		AFPSPlayerState* PS = PC->GetPlayerState<AFPSPlayerState>();
 		if (!PS) continue;
 
-		if (PS->Kills >= TargetKills) {
-			bGameEnded = true;			
+		if (PS->Kills >= TargetKills)
+		{
+			bGameEnded = true;
+
+			FTimerHandle TimerHandle;
+			GetWorld()->GetTimerManager().SetTimer(
+				TimerHandle,
+				[this]()
+				{                            
+					const FString TravelURL = TEXT("/Game/Maps/MenuMap?game=/Game/GameModes/MenuGameMode.MenuGameMode'";);
+					bool bResult = GetWorld()->ServerTravel(TravelURL);
+				},
+				5.f,
+				false);
+
 			return;
 		}
 	}

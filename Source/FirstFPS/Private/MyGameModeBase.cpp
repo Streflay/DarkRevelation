@@ -116,25 +116,52 @@ void AMyGameModeBase::ResetRoundAndRespawnPlayers(float RespawnDelay)
 
 void AMyGameModeBase::HandleFFARespawn(APlayerController* Victim)
 {
+	// 游戏已经结束，不允许再复活
+	if (AFFAGameModeBase* FFA = Cast<AFFAGameModeBase>(this))	
+		if (FFA->bGameEnded)
+        	return;
+		
 	if (!Victim) return;
 
 	FTimerHandle Timer;
-	GetWorld()->GetTimerManager().SetTimer(Timer, [this, Victim]()
+
+	TWeakObjectPtr<AMyGameModeBase> WeakThis(this);
+	TWeakObjectPtr<APlayerController> WeakVictim(Victim);
+	GetWorld()->GetTimerManager().SetTimer(Timer, [WeakThis, WeakVictim]()
 		{
-			AFPSPlayerController* PC = Cast<AFPSPlayerController>(Victim);
+			if (!WeakThis.IsValid()) return;
+			if (!WeakVictim.IsValid()) return;
+
+			AMyGameModeBase* GM = WeakThis.Get();
+			APlayerController* VictimPC = WeakVictim.Get();
+
+			if (!GM || !VictimPC) return;
+
+			AFPSPlayerController* PC = Cast<AFPSPlayerController>(VictimPC);
 			if (!PC) return;
+
+			if (!GM->SpawnManager) return;
+
 			// 销毁旧 Pawn
 			if (APawn* OldPawn = PC->GetPawn()) {
 				PC->UnPossess();
 				OldPawn->Destroy();
 			}
-			// 重新生成
-			if (SpawnManager) {
-				SpawnManager->RequestSpawnPlayer(PC);
-			}
-			NotifyPlayerRespawned(PC);
 
-		}, 10.f, false); // 2秒复活
+			// 再检查一次（防止计时期间游戏结束）
+			if (AFFAGameModeBase* FFAGM = Cast<AFFAGameModeBase>(GM)) {
+				if (FFAGM->bGameEnded) {
+					return;
+				}
+			}
+
+			// 重新生成
+			if (GM->SpawnManager) {
+				GM->SpawnManager->RequestSpawnPlayer(PC);
+			}
+			GM->NotifyPlayerRespawned(PC);
+
+		}, 10.f, false); // 10秒复活
 }
 
 void AMyGameModeBase::BroadcastTeamWin(FGameplayTag WinningTeam, int32 Score)

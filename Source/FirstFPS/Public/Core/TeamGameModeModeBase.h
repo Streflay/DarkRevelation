@@ -22,6 +22,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Score")
 	int32 TerroristScore;
 
+	UPROPERTY(EditDefaultsOnly)
+	int32 TargetScore = 3;
+		
+	UPROPERTY(EditDefaultsOnly)
+	bool bGameEnded = false;
+
 	virtual void BeginPlay() override;
 	virtual void AddScore(APlayerController* Killer) override;
 	virtual void CheckWinCondition() override;

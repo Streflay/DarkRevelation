@@ -16,7 +16,7 @@ class FIRSTFPS_API AFFAGameModeBase : public AMyGameModeBase
 	
 public:
 	UPROPERTY(EditDefaultsOnly)
-	int32 TargetKills = 30;
+	int32 TargetKills = 2;
 
 	UPROPERTY(EditDefaultsOnly)
 	bool bGameEnded = false;

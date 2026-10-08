@@ -49,13 +49,5 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DelayCompensation")
     UDelayCompensationComponent* DelayCompensationComponent;
 
-    // 记录玩家位置
-    UFUNCTION(BlueprintCallable, Category = "DelayCompensation")
-    void RecordPosition(FVector NewPosition, float Time);
-
-    // 获取历史位置
-    UFUNCTION(BlueprintCallable, Category = "DelayCompensation")
-    FVector GetPositionAtTime(float TargetTime);
-
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

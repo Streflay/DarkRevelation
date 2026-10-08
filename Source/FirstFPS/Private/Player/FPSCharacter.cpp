@@ -184,19 +184,6 @@ void AFPSCharacter::PlayEquipWeaponMontage(UAnimMontage* MontageToPlay)
 void AFPSCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (HasAuthority()) // 仅服务器记录
-	{
-		AFPSPlayerState* PS = GetPlayerState<AFPSPlayerState>();
-		if (PS)
-		{
-			float CurrentTime = GetWorld()->GetTimeSeconds();
-			if (CurrentTime - LastRecordedTime > 0.05f) // 每50ms记录一次
-			{
-				PS->RecordPosition(GetActorLocation(), CurrentTime);
-				LastRecordedTime = CurrentTime;
-			}
-		}
-	}
 }
 
 

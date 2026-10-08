@@ -14,8 +14,10 @@ FVector UBulletSpreadComponent::ApplySpreadToDirection(const FVector& ForwardDir
 	float TotalSpread = BaseSpread + CurrentSpread;
 
 	// 随机角度（度数 -> 弧度）
-	float RandYaw = FMath::RandRange(-TotalSpread, TotalSpread);
-	float RandPitch = FMath::RandRange(-TotalSpread, TotalSpread);
+	float Radius = FMath::RandRange(0.f, TotalSpread);
+	float Angle = FMath::RandRange(0.f, 360.f);
+	float RandYaw = Radius * FMath::Cos(FMath::DegreesToRadians(Angle));
+	float RandPitch = Radius * FMath::Sin(FMath::DegreesToRadians(Angle));
 
 	FRotator SpreadRot = ForwardDirection.Rotation();
 	SpreadRot.Yaw += RandYaw;

@@ -64,6 +64,9 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_UpdateKills(int32 Kills);
 
+	UFUNCTION(Client, Reliable)
+	void Client_ClearAllWidgets();
+
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void Server_StartFFA();
 

@@ -29,6 +29,7 @@ void ATeamGameModeModeBase::AddScore(APlayerController* Killer)
 
 void ATeamGameModeModeBase::CheckWinCondition()
 {
+	if (bGameEnded) return;
 	int32  CounterTerroristsAlive = 0;
 	int32 TerroristsAlive = 0;
 
@@ -71,6 +72,23 @@ void ATeamGameModeModeBase::CheckWinCondition()
 
 	// 向所有玩家广播胜利消息
 	BroadcastTeamWin(WinningTeam, TeamScore);
+
+	// 到达目标分数，结束比赛
+	if (TeamScore >= TargetScore)
+	{
+		bGameEnded = true;
+		FTimerHandle TimerHandle;
+		GetWorld()->GetTimerManager().SetTimer(
+			TimerHandle,
+			[this]()
+			{
+				const FString TravelURL = TEXT("/Game/Maps/MenuMap?game=/Game/GameModes/MenuGameMode.MenuGameMode'";);
+				bool bResult = GetWorld()->ServerTravel(TravelURL);
+			},
+			5.f,
+			false);
+	}
+
 	ResetRoundAndRespawnPlayers(3.f);
 }
 

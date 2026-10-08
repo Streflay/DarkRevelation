@@ -28,6 +28,15 @@ UUserWidget* UUIManagerComponent::GetOrCreateWidgetInstance(const FGameplayTag& 
 	return nullptr;
 }
 
+void UUIManagerComponent::ClearAllWidgets()
+{
+	for (auto& Pair : WidgetInstanceMap) {
+		if (Pair.Value)
+			Pair.Value->RemoveFromParent();
+	}
+	WidgetClassMap.Empty();
+}
+
 void UUIManagerComponent::UpdateInventory_Implementation(EWeaponSlot WeaponType, UTexture2D* WeaponThumbnail)
 {
 	// 触发蓝图绑定事件
